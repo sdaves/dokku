@@ -3,10 +3,13 @@ set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
 APP="$1"; PORT="$2" ; HOSTNAME="${3:-localhost}"
 
 FILENAME="$DOKKU_ROOT/$APP/CHECKS"
-echo $FILENAME
+INITIAL_WAIT=5
 RETRIES=3
 
 if [[ ! -f "$FILENAME" ]] ; then exit ; fi
+
+echo "Waiting $INITIAL_WAIT seconds ..."
+sleep $INITIAL_WAIT
 
 # -q           do not use .curlrc (must come first)
 # --compressed Test compression handled correctly
