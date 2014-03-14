@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+APP="$1"; PORT="$2" ; HOSTNAME="${3:-localhost}"
+
+FILENAME="$DOKKU_ROOT/$APP/CHECKS"
+echo $FILENAME
+RETRIES=3
+
+if [[ ! -f "$FILENAME" ]] ; then exit ; fi
+
+# -q           do not use .curlrc (must come first)
+# --compressed Test compression handled correctly
+# --fail       Fail on server errors (4xx, 5xx)
+# --location   Follow redirects
+CURL_OPTIONS="-q --compressed --fail --location --max-time 30 --retry $RETRIES"
+
+cat "$FILENAME" | while read PATHNAME EXPECTED ; do
+  # Ignore empty lines and lines starting with #
+  [[ -z "$PATHNAME" || "$PATHNAME" =~ ^\# ]] && continue
+
+  URL="http://$HOSTNAME:$PORT$PATHNAME"
+
+  echo "$URL => \"$EXPECTED\""
+  HTML=$(curl $CURL_OPTIONS $URL)
+  if [[ -n "$EXPECTED" && ! "$HTML" =~ "$EXPECTED" ]] ; then
+    echo "$URL: expected to but did not find: \"$EXPECTED\""
+    exit 1
+  fi
+done
+
