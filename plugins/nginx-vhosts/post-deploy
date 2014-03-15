@@ -21,7 +21,7 @@ if [[ -f "$DOKKU_ROOT/VHOST" ]]; then
 
   # ssl based nginx.conf
   if [[ -n "$SSL_INUSE" ]]; then
-  cat<<EOF > $DOKKU_ROOT/$APP/nginx.conf
+  cat<<EOF > $DOKKU_ROOT/$APP/nginx.conf.new
 upstream $APP { server 127.0.0.1:$PORT; }
 server {
   listen      [::]:80;
@@ -68,7 +68,7 @@ EOF
   echo "https://$hostname" > "$DOKKU_ROOT/$APP/URL"
 else
 # default nginx.conf
-  cat<<EOF > $DOKKU_ROOT/$APP/nginx.conf
+  cat<<EOF > $DOKKU_ROOT/$APP/nginx.conf.new
 upstream $APP { server 127.0.0.1:$PORT; }
 server {
   listen      [::]:80;
@@ -90,6 +90,12 @@ EOF
 
   echo "http://$hostname" > "$DOKKU_ROOT/$APP/URL"
   fi
+
+  # pre-reload hoosk may check new container operating successfully,
+  # before switching nginx to new configuration
+  trap "rm -f $DOKKU_ROOT/$APP/nginx.conf.new" INT TERM EXIT
   pluginhook nginx-pre-reload $APP $PORT
+
+  mv -f $DOKKU_ROOT/$APP/nginx.conf.new $DOKKU_ROOT/$APP/nginx.conf
   sudo /etc/init.d/nginx reload > /dev/null
 fi
