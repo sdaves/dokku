@@ -23,11 +23,11 @@ cat "$FILENAME" | while read PATHNAME EXPECTED ; do
 
   URL="http://$HOSTNAME:$PORT$PATHNAME"
 
-  echo "$URL => \"$EXPECTED\""
   HTML=$(curl $CURL_OPTIONS $URL)
   if [[ -n "$EXPECTED" && ! "$HTML" =~ "$EXPECTED" ]] ; then
-    echo "$URL: expected to but did not find: \"$EXPECTED\""
+    echo -e "\033[31m\033[1m$URL: expected to but did not find: \"$EXPECTED\"\033[0m"
     exit 1
   fi
+  echo -e "\033[32m\033[1m$URL => \"$EXPECTED\"\033[0m"
 done
 
