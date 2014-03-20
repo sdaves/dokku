@@ -6,10 +6,6 @@ SSL="$DOKKU_ROOT/$APP/ssl"
 
 if [[ -f "$DOKKU_ROOT/VHOST" ]]; then
 
-  # pre-reload hook checks new server operating successfully, before switching
-  # Nginx to new configuration
-  pluginhook nginx-pre-reload $APP $PORT
-
   VHOST=$(< "$DOKKU_ROOT/VHOST")
   SUBDOMAIN=${APP/%\.${VHOST}/}
   if [[ "$APP" == *.* ]] && [[ "$SUBDOMAIN" == "$APP" ]]; then
@@ -95,6 +91,6 @@ EOF
 
   echo "http://$hostname" > "$DOKKU_ROOT/$APP/URL"
   fi
-
+  pluginhook nginx-pre-reload $APP
   sudo /etc/init.d/nginx reload > /dev/null
 fi

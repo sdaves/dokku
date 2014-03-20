@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Nginx pre-reload hook to check server against list of checks specified in
-# CHECKS file.  Each check is a relative path and, optionally, expected content.
+# Hook to check server against list of checks specified in CHECKS file.  Each
+# check is a relative path and, optionally, expected content.
 #
 # For example:
 #   /                       My Amazing App
