@@ -73,9 +73,10 @@ case "$1" in
       kill -9 $$
     }
 
-    # run post-deploy hooks, switch Nginx over
+    # run checks first, then post-deploy hooks, which switches Nginx traffic
     trap kill_new INT TERM EXIT
-    pluginhook post-deploy $APP $port
+    pluginhook check-deploy $APP $port
+    pluginhook post-deploy  $APP $port
     trap -        INT TERM EXIT
 
     # now using the new container
