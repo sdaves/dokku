@@ -12,28 +12,23 @@
 # Waits 5 seconds, giving server time to start, before running the checks.  For
 # shorter/longer wait, change the DOKKU_CHECKS_WAIT environment variable (value
 # in seconds).
-#
-# Retries failed checks 3 times before giving up.  If you need more/less
-# retries, change the DOKKU_CHECKS_RETRIES environment variable.  Only retries
-# failed connections, 4xx/5xx responses fail immediately.
 
 set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
 APP="$1"; PORT="$2" ; HOSTNAME="${3:-localhost}"
 
 FILENAME="$DOKKU_ROOT/$APP/CHECKS"
 WAIT="${DOKKU_CHECKS_WAIT:-5}"
-RETRIES="${DOKKU_CHECKS_RETRIES:-3}"
 
 if [[ ! -f "$FILENAME" ]] ; then exit ; fi
 
-#echo "Waiting $WAIT seconds ..."
-#sleep $WAIT
+echo "Waiting $WAIT seconds ..."
+sleep $WAIT
 
 # -q           do not use .curlrc (must come first)
 # --compressed Test compression handled correctly
 # --fail       Fail on server errors (4xx, 5xx)
 # --location   Follow redirects
-CURL_OPTIONS="-q --compressed --fail --location --max-time 30 --retry $RETRIES"
+CURL_OPTIONS="-q --compressed --fail --location --max-time 30"
 
 cat "$FILENAME" | while read PATHNAME EXPECTED ; do
   # Ignore empty lines and lines starting with #
