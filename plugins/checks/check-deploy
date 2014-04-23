@@ -14,12 +14,21 @@
 # in seconds).
 
 set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
-APP="$1"; PORT="$2" ; HOSTNAME="${3:-localhost}"
+CONTAINERID="$1"; APP="$2"; PORT="$3" ; HOSTNAME="${4:-localhost}"
 
 FILENAME="$DOKKU_ROOT/$APP/CHECKS"
 WAIT="${DOKKU_CHECKS_WAIT:-5}"
 
-if [[ ! -f "$FILENAME" ]] ; then exit ; fi
+# try to copy CHECKS from container as well. quit gracefully if it doesn't exist
+if [[ ! -f "$FILENAME" ]] ; then
+    echo "$FILENAME not found. attempting to retrieve it with this command: "
+    echo "docker cp $CONTAINERID:/app/CHECKS $DOKKU_ROOT/$APP/"
+    copy=$( docker cp $CONTAINERID:/app/CHECKS $DOKKU_ROOT/$APP/ > /dev/null 2>&1 ; echo $? )
+    echo "copy exited with $copy"
+    if [ $copy -ne 0 ]; then
+        exit
+    fi
+fi
 
 echo "Waiting $WAIT seconds ..."
 sleep $WAIT
@@ -28,7 +37,7 @@ sleep $WAIT
 # --compressed Test compression handled correctly
 # --fail       Fail on server errors (4xx, 5xx)
 # --location   Follow redirects
-CURL_OPTIONS="-q --compressed --fail --location --max-time 30"
+CURL_OPTIONS="-H 'HOST: $APP' -q --compressed --fail --location --max-time 30"
 
 cat "$FILENAME" | while read PATHNAME EXPECTED ; do
   # Ignore empty lines and lines starting with #
@@ -46,3 +55,6 @@ done
 
 echo -e "\033[32m\033[1mAll checks successful!\033[0m"
 
+if [ $copy -eq 0 ]; then
+    rm $FILENAME
+fi
