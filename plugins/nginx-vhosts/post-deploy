@@ -93,6 +93,6 @@ EOF
   fi
   echo "-----> Running nginx-pre-reload"
   pluginhook nginx-pre-reload $APP $PORT
-  echo "-----> Reloading nginx"
+  echo "       Reloading nginx"
   sudo /etc/init.d/nginx reload > /dev/null
 fi
