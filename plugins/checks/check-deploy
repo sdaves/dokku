@@ -20,13 +20,16 @@ FILENAME="$DOKKU_ROOT/$APP/CHECKS"
 WAIT="${DOKKU_CHECKS_WAIT:-5}"
 
 # try to copy CHECKS from container as well. quit gracefully if it doesn't exist
+# docker cp exits with 1 when run as non-root user. the copy still happens though
+# ref: https://github.com/dotcloud/docker/issues/3986
 if [[ ! -f "$FILENAME" ]] ; then
-    echo "$FILENAME not found. attempting to retrieve it with this command: "
-    echo "docker cp $CONTAINERID:/app/CHECKS $DOKKU_ROOT/$APP/"
-    copy=$( docker cp $CONTAINERID:/app/CHECKS $DOKKU_ROOT/$APP/ > /dev/null 2>&1 ; echo $? )
-    echo "copy exited with $copy"
-    if [ $copy -ne 0 ]; then
-        exit
+    echo "$FILENAME not found. attempting to retrieve it from container ..."
+    docker cp $CONTAINERID:/app/CHECKS $DOKKU_ROOT/$APP/ || true
+    if [[ ! -f "$FILENAME" ]] ; then
+        echo "$FILENAME not found. skipping checks."
+        exit 0
+    else
+        copy="true"
     fi
 fi
 
@@ -37,7 +40,7 @@ sleep $WAIT
 # --compressed Test compression handled correctly
 # --fail       Fail on server errors (4xx, 5xx)
 # --location   Follow redirects
-CURL_OPTIONS="-H 'HOST: $APP' -q --compressed --fail --location --max-time 30"
+CURL_OPTIONS="-q --compressed --fail --location --max-time 30"
 
 cat "$FILENAME" | while read PATHNAME EXPECTED ; do
   # Ignore empty lines and lines starting with #
@@ -45,6 +48,7 @@ cat "$FILENAME" | while read PATHNAME EXPECTED ; do
 
   URL="http://$HOSTNAME:$PORT$PATHNAME"
 
+  echo "checking with: curl $CURL_OPTIONS $URL"
   HTML=$(curl $CURL_OPTIONS $URL)
   if [[ -n "$EXPECTED" && ! "$HTML" =~ "$EXPECTED" ]] ; then
     echo -e "\033[31m\033[1m$URL: expected to but did not find: \"$EXPECTED\"\033[0m"
@@ -55,6 +59,6 @@ done
 
 echo -e "\033[32m\033[1mAll checks successful!\033[0m"
 
-if [ $copy -eq 0 ]; then
+if [ "$copy" = "true" ]; then
     rm $FILENAME
 fi
