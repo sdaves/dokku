@@ -24,15 +24,19 @@ WAIT="${DOKKU_CHECKS_WAIT:-5}"
 
 # try to copy CHECKS from container if not in APP dir & quit gracefully if it doesn't exist
 # docker cp exits with status 1 when run as non-root user when it tries to chown the file
-# after successfully copying the file.
+# after successfully copying the file. Thus, we suppress stderr.
 # ref: https://github.com/dotcloud/docker/issues/3986
 if [[ ! -f "$FILENAME" ]] ; then
     echo "       check-deploy: $FILENAME not found. attempting to retrieve it from container ..."
-    docker cp $CONTAINERID:/app/CHECKS $DOKKU_ROOT/$APP/ || true
-    if [[ ! -f "$FILENAME" ]] ; then
-        echo "$FILENAME not found. skipping checks."
+    TMPDIR=$(mktemp -d /tmp/CHECKS.XXXXX)
+    docker cp $CONTAINERID:/app/CHECKS $TMPDIR 2> /dev/null || true
+    if [[ ! -s "${TMPDIR}/CHECKS" ]] ; then
+        echo "       CHECKS file not found in container. skipping checks."
+        rm -rf $TMPDIR
         exit 0
     else
+        echo "       CHECKS file found in container"
+        FILENAME=${TMPDIR}/CHECKS
         copy="true"
     fi
 fi
@@ -56,9 +60,9 @@ cat "$FILENAME" | while read PATHNAME EXPECTED ; do
   HTML=$(curl $CURL_OPTIONS $URL)
   if [[ -n "$EXPECTED" && ! "$HTML" =~ "$EXPECTED" ]] ; then
     echo -e "\033[31m\033[1m$URL: expected to but did not find: \"$EXPECTED\"\033[0m"
-    if [[ -n "$copy" && -f "$FILENAME" ]]; then
+    if [[ -n "$copy" && -d "$TMPDIR" ]]; then
         echo "       removing CHECKS file copied from container"
-        rm $FILENAME
+        rm -rf $TMPDIR
     fi
     exit 1
   fi
@@ -67,8 +71,7 @@ done
 
 echo -e "\033[32m\033[1mAll checks successful!\033[0m"
 
-if [[ -n "$copy" && -f "$FILENAME" ]]; then
+if [[ -n "$copy" && -d "$TMPDIR" ]]; then
   echo "       removing CHECKS file copied from container"
-  rm $FILENAME
+  rm -rf $TMPDIR
 fi
-
