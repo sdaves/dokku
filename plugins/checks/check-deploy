@@ -37,7 +37,12 @@ if [[ ! -f "$FILENAME" ]] ; then
     else
         echo "       CHECKS file found in container"
         FILENAME=${TMPDIR}/CHECKS
-        copy="true"
+
+        function cleanup() {
+          echo "       removing CHECKS file copied from container"
+          rm -rf $TMPDIR
+        }
+        trap cleanup EXIT
     fi
 fi
 
@@ -60,18 +65,10 @@ cat "$FILENAME" | while read PATHNAME EXPECTED ; do
   HTML=$(curl $CURL_OPTIONS $URL)
   if [[ -n "$EXPECTED" && ! "$HTML" =~ "$EXPECTED" ]] ; then
     echo -e "\033[31m\033[1m$URL: expected to but did not find: \"$EXPECTED\"\033[0m"
-    if [[ -n "$copy" && -d "$TMPDIR" ]]; then
-        echo "       removing CHECKS file copied from container"
-        rm -rf $TMPDIR
-    fi
     exit 1
+  else
+    echo -e "\033[32m\033[1m$URL => \"$EXPECTED\"\033[0m"
   fi
-  echo -e "\033[32m\033[1m$URL => \"$EXPECTED\"\033[0m"
 done
 
 echo -e "\033[32m\033[1mAll checks successful!\033[0m"
-
-if [[ -n "$copy" && -d "$TMPDIR" ]]; then
-  echo "       removing CHECKS file copied from container"
-  rm -rf $TMPDIR
-fi
