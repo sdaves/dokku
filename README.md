@@ -6,16 +6,15 @@ Docker powered mini-Heroku. The smallest PaaS implementation you've ever seen.
 
 ## Requirements
 
-Assumes Ubuntu 13 or 12.04 x64 right now. Ideally have a domain ready to point to your host. It's designed for and is probably
-best to use a fresh VM. The bootstrapper will install everything it needs.
+Ubuntu 14.04 x64 or 12.04 x64. Ideally have a domain ready to point to your host. It's designed for and is probably best to use a fresh VM. The bootstrapper will install everything it needs.
 
-**Note: There are known issues with docker and Ubuntu 13.10 ([1](https://github.com/dotcloud/docker/issues/1300), [2](https://github.com/dotcloud/docker/issues/1906)) - use of 12.04 is recommended until these issues are resolved.**
+**Note: Support for 12.04 will be sunsetting in the near future after dokku & 14.04 have been more thoroughly tested.**
 
 ## Installing
 
 ### Stable
 
-    $ wget -qO- https://raw.github.com/progrium/dokku/v0.2.2/bootstrap.sh | sudo DOKKU_TAG=v0.2.2 bash
+    $ wget -qO- https://raw.github.com/progrium/dokku/v0.2.3/bootstrap.sh | sudo DOKKU_TAG=v0.2.3 bash
 
 **Note**: Users on 12.04 will need to run `apt-get install -y python-software-properties` before bootstrapping stable.
 
@@ -59,6 +58,8 @@ Now you can deploy apps on your Dokku. Let's deploy the [Heroku Node.js sample a
            http://node-js-app.progriumapp.com
 
 You're done!
+
+Dokku only supports deploying from its master branch, so if you'd like to deploy a different local branch use: ```git push progrium <local branch>:master``` 
 
 Right now Buildstep supports buildpacks for Node.js, Ruby, Python, [and more](https://github.com/progrium/buildstep#supported-buildpacks). It's not hard to add more, [go add more](https://github.com/progrium/buildstep#adding-buildpacks)!
 Please check the documentation for your particular build pack as you may need to include configuration files (such as a Procfile) in your project root.
@@ -104,9 +105,34 @@ config:set <app> KEY1=VALUE1 [KEY2=VALUE2 ...] - set one or more config vars
 config:unset <app> KEY1 [KEY2 ...] - unset one or more config vars
 ```
 
-## TLS support
+## TLS/SPDY support
 
-Dokku provides easy TLS support from the box. To enable TLS connection to your application, copy the `.crt` and `.key` files into the `/home/dokku/:app/ssl` folder (notice, file names should be `server.crt` and `server.key`, respectively). Redeployment of the application will be needed to apply TLS configuration. Once it is redeployed, the application will be accessible by `https://` (redirection from `http://` is applied as well).
+Dokku provides easy TLS/SPDY support out of the box. This can be done app-by-app or for all subdomains at once. Note that whenever TLS support is enabled SPDY is also enabled.
+
+### Per App
+
+To enable TLS connection to to one of your applications, copy or symlink the `.crt`/`.pem` and `.key` files into the application's `/home/dokku/:app/tls` folder (create this folder if it doesn't exist) as `server.crt` and `server.key` respectively.
+
+Redeployment of the application will be needed to apply TLS configuration. Once it is redeployed, the application will be accessible by `https://` (redirection from `http://` is applied as well).
+
+### All Subdomains
+
+To enable TLS connections for all your applications at once you will need a wildcard TLS certificate.
+
+To enable TLS across all apps, copy or symlink the `.crt`/`.pem` and `.key` files into the  `/home/dokku/tls` folder (create this folder if it doesn't exist) as `server.crt` and `server.key` respectively. Then, enable the certificates by editing `/etc/nginx/conf.d/dokku.conf` and uncommenting these two lines (remove the #):
+
+    ssl_certificate /home/dokku/tls/server.crt;
+    ssl_certificate_key /home/dokku/tls/server.key;
+
+The nginx configuration will need to be reloaded in order for the updated TLS configuration to be applied. This can be done either via the init system or by re-deploying the application. Once TLS is enabled, the application will be accessible by `https://` (redirection from `http://` is applied as well).
+
+**Note**: TLS will not be enabled unless the application's VHOST matches the certificate's name. (i.e. if you have a cert for *.example.com TLS won't be enabled for something.example.org or example.net)
+
+### HSTS Header
+
+The [HSTS header](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) is an HTTP header that can inform browsers that all requests to a given site should be made via HTTPS. dokku does not, by default, enable this header. It is thus left up to you, the user, to enable it for your site.
+
+Beware that if you enable the header and a subsequent deploy of your application results in an HTTP deploy (for whatever reason), the way the header works means that a browser will not attempt to request the HTTP version of your site if the HTTPS version fails.
 
 ## Upgrading
 
