@@ -86,8 +86,12 @@ case "$1" in
     echo $port > "$DOKKU_ROOT/$APP/PORT"
     echo "http://$(< "$DOKKU_ROOT/HOSTNAME"):$port" > "$DOKKU_ROOT/$APP/URL"
 
-    # kill the old container
     if [[ -n "$oldid" ]]; then
+      # Let the old container finish processing requests, before terminating it
+      WAIT="${DOKKU_WAIT_TO_RETIRE:-5}"
+      echo "-----> Waiting $WAIT seconds"
+      sleep $WAIT
+      echo "-----> Shutting down old container"
       docker inspect $oldid &> /dev/null && docker kill $oldid > /dev/null
     fi
 
