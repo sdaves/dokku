@@ -90,6 +90,9 @@ exec < "$FILENAME"
 while read PATHNAME EXPECTED ; do
   # Ignore empty lines and lines starting with #
   [[ -z "$PATHNAME" || "$PATHNAME" =~ ^\# ]] && continue
+  # Ignore variables
+  [[ "$LINE" =~ ^.+= ]] && continue
+
 
   if [[ "$PATHNAME" =~ ^//.+ ]] ; then
     # To test a URL with specific host name, we still make request to $HOSTNAME,
