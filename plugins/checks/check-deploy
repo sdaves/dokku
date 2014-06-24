@@ -91,7 +91,7 @@ while read PATHNAME EXPECTED ; do
   # Ignore empty lines and lines starting with #
   [[ -z "$PATHNAME" || "$PATHNAME" =~ ^\# ]] && continue
   # Ignore variables
-  [[ "$LINE" =~ ^.+= ]] && continue
+  [[ "$PATHNAME" =~ ^.+= ]] && continue
 
 
   if [[ "$PATHNAME" =~ ^//.+ ]] ; then
