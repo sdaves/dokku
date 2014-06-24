@@ -1,23 +1,33 @@
 #!/usr/bin/env bash
 
-# Hook to check server against list of checks specified in CHECKS file.  Each
-# check is a relative path and, optionally, expected content.
+# Hook to check server against list of checks specified in CHECKS file.
 #
-# For example:
+# The CHECKS file may contain empty lines, comments (lines starting with #),
+# settings (NAME=VALUE) and check instructions.
+#
+# The format of a check instruction is a path, optionally followed by the
+# expected content.  For example:
+#
 #   /                       My Amazing App
 #   /stylesheets/index.css  .body
 #   /scripts/index.js       $(function()
 #   /images/logo.png
 #
-# If you need to check an application with multiple hostnames, use relative URLs
-# with the hostname, for example:
+# To check an application that supports multiple hostnames, use relative URLs
+# that include the hostname, for example:
 #
 #  //admin.example.com     Admin Dashboard
 #  //static.example.com/logo.png
 #
-# Waits 5 seconds, giving server time to start, before running the checks.  For
-# shorter/longer wait, change the DOKKU_CHECKS_WAIT environment variable (value
-# in seconds).
+# The default behavior is to wait for 5 seconds before running the first check,
+# and timeout each check to 30 minutes.
+#
+# You can change these by setting WAIT and TIMEOUT to different values, for
+# example:
+#
+#   WAIT=30     # Wait 1/2 minute
+#   TIMEOUT=60  # Timeout after a minute
+#
 
 set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
 CONTAINERID="$1"; APP="$2"; PORT="$3" ; HOSTNAME="${4:-localhost}"
@@ -51,6 +61,20 @@ else
 fi
 
 
+# Reads name/value pairs, sets the WAIT and TIMEOUT variables
+exec < "$FILENAME"
+while read LINE ; do
+  # Name/value pair
+  if [[ "$LINE" =~ ^.+= ]] ; then
+    TRIM=${LINE%#*}
+    NAME=${TRIM%=*}
+    VALUE=${TRIM#*=}
+    [[ "$NAME" = "WAIT" ]]    && WAIT=$VALUE
+    [[ "$NAME" = "TIMEOUT" ]] && TIMEOUT=$VALUE
+  fi
+done
+
+
 echo "-----> Waiting $WAIT seconds ..."
 sleep $WAIT
 
@@ -62,7 +86,8 @@ sleep $WAIT
 CURL_OPTIONS="-q --compressed --fail --location --max-time $TIMEOUT"
 
 
-cat "$FILENAME" | while read PATHNAME EXPECTED ; do
+exec < "$FILENAME"
+while read PATHNAME EXPECTED ; do
   # Ignore empty lines and lines starting with #
   [[ -z "$PATHNAME" || "$PATHNAME" =~ ^\# ]] && continue
 
