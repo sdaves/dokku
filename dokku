@@ -112,6 +112,10 @@ case "$1" in
     pluginhook install
     ;;
 
+  list)
+    ls ${DOKKU_ROOT}/*/CONTAINER 2>/dev/null | sed "s|^${DOKKU_ROOT}/\(.*\)/CONTAINER$|\1|"
+    ;;
+
   # temporary hack for https://github.com/progrium/dokku/issues/82
   deploy:all)
     for app in $(ls -d $DOKKU_ROOT/*/); do
