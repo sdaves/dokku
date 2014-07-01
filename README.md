@@ -1,8 +1,59 @@
-# Dokku
+# Dokku 0-downtime
 
-Docker powered mini-Heroku. The smallest PaaS implementation you've ever seen.
+[Dokku project](https://github.com/progrium/dokku) with zero downtime deploys.
 
-[![Build Status](https://travis-ci.org/progrium/dokku.png?branch=master)](https://travis-ci.org/progrium/dokku)
+Zero downtime deploys by means of:
+- Start a new container
+- Run a series of checks against it (see [Checks](#checks))
+- If all checks successful, switch traffic over to new container
+- Give old container chance to process in-flight requests, before shutting it
+  down
+
+Other changes:
+- Supports Docker 1.0.x
+- `dokku list` command lists all available projects
+
+
+## Checks
+
+To check that the server is operating correctly before switching traffic over to
+the new container, add a `CHECKS` file at the root of your project (in Git).
+
+The `CHECKS` file lists one or more resources to check, and the expected content
+of these resources.  For example:
+
+```
+/                       My Amazing App
+/stylesheets/index.css  .body
+/scripts/index.js       $(function()
+/images/logo.png
+```
+
+The resource can be a pathname, with or without the query string.  The expected
+content is matched literally against the body of the HTTP response.  4xx and 5xx
+status codes cause the check to fail.
+
+If you need to test the server with multiple domains, use relative URLs that
+include the proper hostname (but no protocol / port).  For example:
+
+```
+//admin.example.com           Admin Dashboard
+//static.example.com/logo.png
+```
+
+The default behavior will wait 5 seconds for the server to start, before running
+the first check, and timeout each check after 30 seconds.
+
+You can set the `WAIT` and `TIMEOUT` variables to different values within the
+`CHECKS` file, for example:
+
+```
+WAIT=30     # Wait 1/2 minute
+TIMEOUT=60  # Timeout after a minute
+```
+
+Lines that start with `#` are comments.
+
 
 ## Requirements
 
