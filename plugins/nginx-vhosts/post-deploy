@@ -28,13 +28,8 @@ EOF
 
   # ssl based nginx.conf
   if [[ -n "$SSL_INUSE" ]]; then
-  cat<<EOF > $DOKKU_ROOT/$APP/nginx.conf
-upstream $APP { server 127.0.0.1:$PORT; }
-server {
-  listen      [::]:80;
-  listen      80;
-  server_name $hostname;
 
+  SSL_UNSECURE_LOCATION=$(cat <<EOF
   location    / {
     proxy_pass  http://$APP;
     proxy_http_version 1.1;
@@ -44,6 +39,24 @@ server {
     proxy_set_header X-Forwarded-Port \$server_port;
     proxy_set_header X-Request-Start \$msec;
   }
+EOF
+)
+
+  if [[ -e "$SSL/SSL_FORCE_ALL" ]]; then
+    SSL_UNSECURE_LOCATION=$(cat <<EOF
+  return 301 https://\$server_name\$request_uri;
+EOF
+)
+  fi
+
+  cat<<EOF > $DOKKU_ROOT/$APP/nginx.conf
+upstream $APP { server 127.0.0.1:$PORT; }
+server {
+  listen      [::]:80;
+  listen      80;
+  server_name $hostname;
+
+$SSL_UNSECURE_LOCATION
 }
 
 server {
